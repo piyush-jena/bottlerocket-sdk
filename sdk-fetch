@@ -1,13 +1,31 @@
 #!/bin/bash
 set -euxo pipefail
-UPSTREAM_SOURCE_FALLBACK="${UPSTREAM_SOURCE_FALLBACK:-'false'}"
+UPSTREAM_SOURCE_FALLBACK="${UPSTREAM_SOURCE_FALLBACK:-false}"
+
+# Fetch whatever the lookaside cache has. When given many URLs, curl exits with
+# the status of the *last* transfer rather than an aggregate, so its exit code
+# cannot tell us whether every file arrived. Ignore it and check for the files
+# themselves below.
 # shellcheck disable=SC2046
-if ! curl --fail --remote-name-all --remote-time \
+curl --fail --remote-name-all --remote-time \
     $(awk -F '[ ()]' '/^SHA512 \(/ {
         printf "https://cache.bottlerocket.aws/%s/%s/%s\n", $3, $6, $3
-    }' "$1") \
-&& [[ "${UPSTREAM_SOURCE_FALLBACK}" == 'true' ]]; then
-    curl --fail --remote-name-all --remote-time --location \
-        $(awk '/^#\s((s)?ftp|http(s)?):\/\// {printf "%s\n", $2}' "$1")
+    }' "$1") || true
+
+if [[ "${UPSTREAM_SOURCE_FALLBACK}" == 'true' ]]; then
+    # Fetch anything still missing from its upstream source. Each hashes entry
+    # is a comment holding the upstream URL, followed by the expected digest for
+    # the file it provides.
+    missing=()
+    while read -r file url ; do
+        [[ -s "${file}" ]] || missing+=("${url}")
+    done < <(awk '
+        /^#/ { if ($2 ~ /^((s)?ftp|http(s)?):\/\//) url = $2 }
+        /^SHA512 \(/ { gsub(/[()]/, "", $2); print $2, url }
+    ' "$1")
+    if (( ${#missing[@]} > 0 )); then
+        curl --fail --remote-name-all --remote-time --location "${missing[@]}"
+    fi
 fi
+
 sha512sum --check "$1"
