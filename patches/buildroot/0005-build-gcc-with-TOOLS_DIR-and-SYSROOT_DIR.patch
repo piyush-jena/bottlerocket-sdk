@@ -180,16 +180,17 @@ diff --git a/package/gcc/gcc.mk b/package/gcc/gcc.mk
 index 658f5a6b4f..58aae9ec26 100644
 --- a/package/gcc/gcc.mk
 +++ b/package/gcc/gcc.mk
-@@ -71,7 +71,6 @@ HOST_GCC_COMMON_DEPENDENCIES = \
- 
+@@ -63,15 +63,15 @@ HOST_GCC_COMMON_DEPENDENCIES = \
+ 	host-mpfr \
+ 	$(if $(BR2_BINFMT_FLAT),host-elf2flt)
+
  HOST_GCC_COMMON_CONF_OPTS = \
  	--target=$(GNU_TARGET_NAME) \
 -	--with-sysroot=$(STAGING_DIR) \
  	--enable-__cxa_atexit \
  	--with-gnu-ld \
  	--disable-libssp \
-@@ -79,6 +78,7 @@ HOST_GCC_COMMON_CONF_OPTS = \
- 	--disable-decimal-float \
+ 	--disable-multilib \
  	--enable-plugins \
  	--enable-lto \
 +	--enable-linker-build-id \
