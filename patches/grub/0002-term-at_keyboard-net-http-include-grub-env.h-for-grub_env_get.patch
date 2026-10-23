@@ -1,0 +1,53 @@
+From ce696d87019eb59e5e98d54406c4ac68204cd9d2 Mon Sep 17 00:00:00 2001
+From: Piyush Jena <jepiyush@amazon.com>
+Date: Fri, 23 Oct 2026 11:13:01 +0000
+Subject: [PATCH 1/2] term/at_keyboard, net/http: include grub/env.h for
+ grub_env_get
+
+Both files call grub_env_get and assign the result to a char pointer,
+but neither includes the header that declares it. With an implicit
+declaration the return type is int, so the assignment converts an
+integer to a pointer.
+
+GCC 13 accepted this with warnings. GCC 14 promotes both
+-Wimplicit-function-declaration and -Wint-conversion to errors:
+
+  term/at_keyboard.c:204:10: error: assignment to 'char *' from 'int'
+  makes pointer from integer without a cast [-Wint-conversion]
+
+  net/http.c:519:13: error: assignment to 'const char *' from 'int'
+  makes pointer from integer without a cast [-Wint-conversion]
+
+Include grub/env.h in both so the declaration is visible.
+---
+ grub-core/net/http.c         | 1 +
+ grub-core/term/at_keyboard.c | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/grub-core/net/http.c b/grub-core/net/http.c
+index 57d2721..d393910 100644
+--- a/grub-core/net/http.c
++++ b/grub-core/net/http.c
+@@ -17,6 +17,7 @@
+  */
+ 
+ #include <grub/misc.h>
++#include <grub/env.h>
+ #include <grub/net/tcp.h>
+ #include <grub/net/ip.h>
+ #include <grub/net/ethernet.h>
+diff --git a/grub-core/term/at_keyboard.c b/grub-core/term/at_keyboard.c
+index dac0f94..c122c43 100644
+--- a/grub-core/term/at_keyboard.c
++++ b/grub-core/term/at_keyboard.c
+@@ -17,6 +17,7 @@
+  */
+ 
+ #include <grub/dl.h>
++#include <grub/env.h>
+ #include <grub/at_keyboard.h>
+ #include <grub/cpu/at_keyboard.h>
+ #include <grub/cpu/io.h>
+-- 
+2.52.0
+

@@ -1,0 +1,39 @@
+From 263d7cdc7cb8afce58d618d105182128161860e1 Mon Sep 17 00:00:00 2001
+From: Piyush Jena <jepiyush@amazon.com>
+Date: Fri, 23 Oct 2026 11:19:28 +0000
+Subject: [PATCH 2/2] net/bootp: widen the unixtime local in
+ grub_dhcp6_session_add
+
+grub_datetime2unixtime writes a grub_int64_t through its second
+argument, but grub_dhcp6_session_add declared the local as
+grub_int32_t, so the call wrote eight bytes into a four byte object.
+send_dhcp_packet already uses grub_int64_t for exactly this call.
+
+GCC 13 accepted the mismatched pointer with a warning. GCC 14 promotes
+-Wincompatible-pointer-types to an error:
+
+  net/bootp.c:1061:46: error: passing argument 2 of
+  'grub_datetime2unixtime' from incompatible pointer type
+
+Truncation at the assignment to se->transaction_id is still intended,
+as that field is a 24 bit bitfield.
+---
+ grub-core/net/bootp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/grub-core/net/bootp.c b/grub-core/net/bootp.c
+index 7baf354..c6161fc 100644
+--- a/grub-core/net/bootp.c
++++ b/grub-core/net/bootp.c
+@@ -1053,7 +1053,7 @@ grub_dhcp6_session_add (struct grub_net_network_level_interface *iface,
+   grub_dhcp6_session_t se;
+   struct grub_datetime date;
+   grub_err_t err;
+-  grub_int32_t t = 0;
++  grub_int64_t t = 0;
+ 
+   se = grub_malloc (sizeof (*se));
+ 
+-- 
+2.52.0
+
